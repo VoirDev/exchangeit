@@ -1,15 +1,15 @@
 openapi: 3.1.0
 paths:
-  /v1/currencies:
+  /currencies:
     get:
       operationId: CurrenciesController_getCurrencies
-      summary: Get list of currencies
+      summary: Get list of available currencies
       parameters:
         - name: crypto
           required: false
           in: query
-          description: Show crypto currencies
-          example: false
+          description: Show crypto
+          example: true
           schema:
             type: boolean
         - name: search
@@ -19,13 +19,6 @@ paths:
           example: Рубль
           schema:
             type: string
-        - name: withObsolete
-          required: false
-          in: query
-          description: Include obsolete currencies
-          example: false
-          schema:
-            type: boolean
       responses:
         '200':
           description: List of available currencies
@@ -41,12 +34,12 @@ paths:
                           $ref: '#/components/schemas/CurrencyDto'
       tags:
         - Currencies
-  /v1/currencies/{code}:
+  /currencies/{base}:
     get:
-      operationId: CurrencyController_getCurrency
+      operationId: CurrenciesController_getCurrency
       summary: Get currency detailed information
       parameters:
-        - name: code
+        - name: base
           required: true
           in: path
           description: Currency unique code
@@ -68,24 +61,22 @@ paths:
           description: Currency not found
       tags:
         - Currencies
-  /v1/currencies/{code}/latest:
+  /currencies/{base}/latest:
     get:
-      operationId: CurrencyController_getLatestRates
+      operationId: CurrenciesController_getCurrencyLatest
       summary: Get currency with latest rates
       parameters:
-        - name: code
+        - name: base
           required: true
           in: path
           description: Currency unique code
           example: AED
           schema:
             type: string
-        - name: for
+        - name: codes
           required: false
           in: query
-          description: >-
-            List of currency codes for exchange rate. If empty returns all
-            available currencies
+          description: List of currency codes
           example:
             - EUR
             - AED
@@ -96,7 +87,7 @@ paths:
               type: string
       responses:
         '200':
-          description: Currency with latest available exchange rates
+          description: Currency with latest available rate data
           content:
             application/json:
               schema:
@@ -104,17 +95,17 @@ paths:
                   - $ref: '#/components/schemas/DataDto'
                   - properties:
                       data:
-                        $ref: '#/components/schemas/CurrencyLatestRatesDto'
+                        $ref: '#/components/schemas/CurrencyWithLatestRatesDto'
         '404':
           description: Currency not found
       tags:
         - Currencies
-  /v1/currencies/{code}/historical:
+  /currencies/{base}/daily:
     get:
-      operationId: CurrencyController_getHistoricalRates
-      summary: Get currency exchange rates by date
+      operationId: CurrenciesController_getCurrencyDaily
+      summary: Get currency with rates by date
       parameters:
-        - name: code
+        - name: base
           required: true
           in: path
           description: Currency unique code
@@ -122,18 +113,16 @@ paths:
           schema:
             type: string
         - name: date
-          required: true
+          required: false
           in: query
           description: Date
           example: '2021-10-04'
           schema:
             type: string
-        - name: for
+        - name: codes
           required: false
           in: query
-          description: >-
-            List of currency codes for exchange rate. If empty returns all
-            available currencies
+          description: List of currency codes
           example:
             - EUR
             - AED
@@ -144,7 +133,7 @@ paths:
               type: string
       responses:
         '200':
-          description: Currency with exchange rates for specified date
+          description: Currency with rate data
           content:
             application/json:
               schema:
@@ -152,18 +141,18 @@ paths:
                   - $ref: '#/components/schemas/DataDto'
                   - properties:
                       data:
-                        $ref: '#/components/schemas/CurrencyHistoricalRatesDto'
+                        $ref: '#/components/schemas/CurrencyWithRatesDto'
         '404':
           description: Currency not found
       tags:
         - Currencies
-  /v1/currencies/{code}/range:
+  /currencies/{base}/historical:
     get:
-      operationId: CurrencyController_getHistoricalRangeRates
-      summary: Get currency exchange rates by date range
+      operationId: CurrenciesController_getCurrencyHistoricalRates
+      summary: 'Get currency daily rates by provided time series '
       description: Time range should be not bigger than 365 days, otherwise use /monthly
       parameters:
-        - name: code
+        - name: base
           required: true
           in: path
           description: Currency unique code
@@ -184,12 +173,10 @@ paths:
           example: '2021-10-04'
           schema:
             type: string
-        - name: for
+        - name: codes
           required: false
           in: query
-          description: >-
-            List of currency codes for exchange rate. If empty returns all
-            available currencies
+          description: List of currency codes
           example:
             - EUR
             - AED
@@ -200,7 +187,7 @@ paths:
               type: string
       responses:
         '200':
-          description: Currency with exchange rates for specified date range
+          description: Currency with historical rate data
           content:
             application/json:
               schema:
@@ -212,15 +199,15 @@ paths:
         '400':
           description: Start date should be less than end date
         '404':
-          description: Currency not found
+          description: Currency or rates for selected range not found
       tags:
         - Currencies
-  /v1/currencies/{code}/monthly:
+  /currencies/{base}/monthly:
     get:
-      operationId: CurrencyController_getMonthlyRates
-      summary: Get currency exchange rates by month range
+      operationId: CurrenciesController_getCurrencyMonthlyRates
+      summary: Get currency monthly rates by provided time series
       parameters:
-        - name: code
+        - name: base
           required: true
           in: path
           description: Currency unique code
@@ -241,12 +228,10 @@ paths:
           example: '2021-10-04'
           schema:
             type: string
-        - name: for
+        - name: codes
           required: false
           in: query
-          description: >-
-            List of currency codes for exchange rate. If empty returns all
-            available currencies
+          description: List of currency codes
           example:
             - EUR
             - AED
@@ -257,7 +242,7 @@ paths:
               type: string
       responses:
         '200':
-          description: Currency with exchange rates for specified month range
+          description: Currency with monthly rate data
           content:
             application/json:
               schema:
@@ -269,10 +254,10 @@ paths:
         '400':
           description: Start date should be less than end date
         '404':
-          description: Currency not found
+          description: Currency or rates for selected range not found
       tags:
         - Currencies
-  /v1/rates/latest:
+  /rates/latest:
     get:
       operationId: RatesController_getLatestRates
       summary: Get latest rates for selected currencies
@@ -280,38 +265,18 @@ paths:
         - name: codes
           required: true
           in: query
-          description: List of currency codes
+          description: List of currency codes, at least 1, maximum 10
           example:
-            - aed
-            - rub
-            - usd
+            - EUR
+            - AED
+            - RUB
           schema:
             type: array
             items:
               type: string
       responses:
         '200':
-          description: Requested latest exchange rates
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/DataDto'
-                  - properties:
-                      data:
-                        $ref: '#/components/schemas/RatesDto'
-        '404':
-          description: Exchange rates for codes not found
-      tags:
-        - Rates
-  /v1/sources:
-    get:
-      operationId: SourcesController_getSources
-      summary: Get list of available sources
-      parameters: [ ]
-      responses:
-        '200':
-          description: List of available sources
+          description: Currency with latest available rate data
           content:
             application/json:
               schema:
@@ -321,41 +286,13 @@ paths:
                       data:
                         type: array
                         items:
-                          $ref: '#/components/schemas/SourceDto'
+                          $ref: '#/components/schemas/CurrencyWithLatestRatesDto'
       tags:
-        - Sources
-  /v1/sources/{alias}:
-    get:
-      operationId: SourceController_getSource
-      summary: Get source detailed information
-      parameters:
-        - name: alias
-          required: true
-          in: path
-          description: Alias
-          example: cbr
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Source detailed information
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/DataDto'
-                  - properties:
-                      data:
-                        $ref: '#/components/schemas/SourceDto'
-        '404':
-          description: Source not found
-      tags:
-        - Sources
+        - Rates
 info:
-  title: 'API Documentation'
+  title: API Documentation
   description: OpenAPI specification for Exchange It.
-  version: 0.0.4
-  contact: { }
+  version: 0.0.3
 tags: [ ]
 servers: [
   {
@@ -433,55 +370,14 @@ components:
         code:
           type: string
           description: Unique currency code
-          example: aed
+          example: AED
         title:
           type: string
           description: Currency title
           example: United Arab Emirates Dirham
-        localizedTitle:
-          type: object
-          description: Localized titles
-          additionalProperties:
-            type: string
-            description: Localized title
-        crypto:
-          type: boolean
-          description: Is crypto currency?
-          example: false
-        obsolete:
-          type: boolean
-          description: Is obsolete currency?
-          example: false
-        symbol:
-          type: string
-          description: Currency symbol
-          example: ₺
-          nullable: true
-        year:
-          type: number
-          description: Year of introduction
-          example: 2010
-          nullable: true
-        url:
-          type: string
-          description: URL to currency (for example link to crypto currency)
-          example: https://currency.com
-          nullable: true
-        popular:
-          type: boolean
-          description: Is popular currency?
-          example: true
-          nullable: false
       required:
         - code
         - title
-        - localizedTitle
-        - crypto
-        - obsolete
-        - symbol
-        - year
-        - url
-        - popular
     DataDto:
       type: object
       properties:
@@ -493,52 +389,43 @@ components:
           nullable: true
       required:
         - data
-    CentralBankDto:
-      type: object
-      properties:
-        alias:
-          type: string
-          description: Central bank unique alias
-          example: cbr
-          nullable: false
-        name:
-          type: string
-          description: Central bank name
-          example: The Central Bank of the Russian Federation
-          nullable: false
-        url:
-          type: string
-          description: Link to official central bank source
-          example: https://cbr.ru/
-          nullable: true
-      required:
-        - alias
-        - name
-        - url
     CurrencyDetailedDto:
       type: object
       properties:
         code:
           type: string
           description: Unique currency code
-          example: aed
+          example: AED
         title:
           type: string
           description: Currency title
           example: United Arab Emirates Dirham
+        description:
+          type: string
+          description: Currency description
+          example: >-
+            The United States dollar (or American dollar) is the official
+            currency (money) of the United States of America. It is also used in
+            some other countries outside the US. It is the standard currency for
+            international markets selling goods such as gold and oil (petrol).
+            When writing, the symbol for the American dollar is the dollar sign
+            ($). Dollars can also be known as USD (standing for 'U.S. dollar').
+          nullable: true
         localizedTitle:
           type: object
           description: Localized titles
           additionalProperties:
             type: string
             description: Localized title
+        localizedDescription:
+          type: object
+          description: Localized descriptions
+          additionalProperties:
+            type: string
+            description: Localized description
         crypto:
           type: boolean
           description: Is crypto currency?
-          example: false
-        obsolete:
-          type: boolean
-          description: Is obsolete currency?
           example: false
         symbol:
           type: string
@@ -555,77 +442,47 @@ components:
           description: URL to currency (for example link to crypto currency)
           example: https://currency.com
           nullable: true
-        popular:
-          type: boolean
-          description: Is popular currency?
-          example: true
-          nullable: false
-        description:
-          type: string
-          description: Currency description
-          example: >-
-            The United States dollar (or American dollar) is the official
-            currency (money) of the United States of America. It is also used in
-            some other countries outside the US. It is the standard currency for
-            international markets selling goods such as gold and oil (petrol).
-            When writing, the symbol for the American dollar is the dollar sign
-            ($). Dollars can also be known as USD (standing for 'U.S. dollar').
-          nullable: true
-        localizedDescription:
-          type: object
-          description: Localized descriptions
-          additionalProperties:
-            type: string
-            description: Localized description
-        centralBanks:
-          description: List of central banks issuing the currency
-          type: array
-          items:
-            $ref: '#/components/schemas/CentralBankDto'
       required:
         - code
         - title
+        - description
         - localizedTitle
+        - localizedDescription
         - crypto
-        - obsolete
         - symbol
         - year
         - url
-        - popular
-        - description
-        - localizedDescription
-        - centralBanks
-    CurrencyLatestRateDto:
+    CurrencyRateWithDateDto:
       type: object
       properties:
         code:
           type: string
           description: Unique currency code
-          example: aed
+          example: RUB
         rate:
           type: number
-          description: Currency exchange rate
+          description: Currency rate
           example: 0.0089
-          nullable: true
         date:
           type: string
-          description: Date of provided rate in YYYY-MM-DD format
+          description: Date in YYYY-mm-dd format
           example: '2021-10-04'
         fluctuation:
           type: number
-          description: Rate fluctuation with previous rate
+          description: Currency fluctuation with previous rate
           example: -0.02
       required:
         - code
         - rate
         - date
-    CurrencyLatestRatesDto:
+        - fluctuation
+    CurrencyWithLatestRatesDto:
       type: object
       properties:
         code:
           type: string
           description: Unique currency code
-          example: aed
+          example: AED
         title:
           type: string
           description: Currency title
@@ -634,38 +491,62 @@ components:
           description: Currency latest rates
           type: array
           items:
-            $ref: '#/components/schemas/CurrencyLatestRateDto'
+            $ref: '#/components/schemas/CurrencyRateWithDateDto'
       required:
         - code
         - title
         - rates
-    SimpleCurrencyRateDto:
+    CurrencyRateDto:
       type: object
       properties:
         code:
           type: string
           description: Unique currency code
-          example: aed
+          example: RUB
         rate:
           type: number
-          description: Currency exchange rate
+          description: Currency rate
           example: 0.0089
-          nullable: true
       required:
         - code
         - rate
+    CurrencyWithRatesDto:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Unique currency code
+          example: AED
+        title:
+          type: string
+          description: Currency title
+          example: United Arab Emirates Dirham
+        date:
+          type: string
+          description: Date in YYYY-mm-dd format
+          example: '2021-10-04'
+        rates:
+          description: Currency rates
+          type: array
+          items:
+            $ref: '#/components/schemas/CurrencyRateDto'
+      required:
+        - code
+        - title
+        - date
+        - rates
     CurrencyHistoricalRateDto:
       type: object
       properties:
         date:
           type: string
-          description: Date in YYYY-MM-DD format
+          description: Date in YYYY-mm-dd format
           example: '2021-10-04'
         rates:
-          description: Currency rates for date
+          description: Currency rates
           type: array
           items:
-            $ref: '#/components/schemas/SimpleCurrencyRateDto'
+            $ref: '#/components/schemas/CurrencyRateDto'
       required:
         - date
         - rates
@@ -675,7 +556,7 @@ components:
         code:
           type: string
           description: Unique currency code
-          example: aed
+          example: AED
         title:
           type: string
           description: Currency title
@@ -704,13 +585,13 @@ components:
       properties:
         month:
           type: string
-          description: Month in YYYY-MM format
+          description: Month in YYYY-mm format
           example: 2021-10
         rates:
           description: Currency rates
           type: array
           items:
-            $ref: '#/components/schemas/SimpleCurrencyRateDto'
+            $ref: '#/components/schemas/CurrencyRateDto'
       required:
         - month
         - rates
@@ -720,7 +601,7 @@ components:
         code:
           type: string
           description: Unique currency code
-          example: aed
+          example: AED
         title:
           type: string
           description: Currency title
@@ -744,48 +625,3 @@ components:
         - start
         - end
         - monthly
-    RatesDto:
-      type: object
-      properties:
-        rates:
-          type: object
-          description: Exchange rates by currency code
-          additionalProperties:
-            type: array
-            items:
-              $ref: '#/components/schemas/CurrencyLatestRateDto'
-      required:
-        - rates
-    SourceDto:
-      type: object
-      properties:
-        alias:
-          type: string
-          description: Unique source alias
-          example: central-bank-europe
-        title:
-          type: string
-          description: Title of the source
-          example: Central bank of Europe
-        type:
-          type: string
-          description: Type of the source
-          enum:
-            - central_bank
-            - bank
-            - market
-            - crypto_market
-            - free_source
-            - api
-            - unknown
-            - secret
-          example: central_bank
-        api:
-          type: boolean
-          description: Supported by Exchange It public API.
-          example: true
-      required:
-        - alias
-        - title
-        - type
-        - api

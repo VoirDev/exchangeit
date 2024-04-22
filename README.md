@@ -7,7 +7,7 @@
 <h1 align="center">Exchange It</h1>
   <p align="center">
     Free currency exchange rates API and Mobile App.<br/>
-    340+ currencies and cryptos, up-to-date rates
+    700+ currencies and cryptos, up-to-date rates
     <br/>
     <br />
     <a href="https://exchangeit.app/docs"><strong>Explore the API docs »</strong></a>
@@ -23,11 +23,10 @@
 
 ## About The Project
 
-The primary goal of the Exchange It project is to create a cutting-edge and user-friendly mobile
+The primary goal of the Exchange It project is to create a user-friendly mobile
 application along with a versatile RESTful API for accessing current and historical currency
 exchange rates. This initiative aims to provide developers with a seamless toolset to integrate
-accurate and up-to-date exchange rate information into their applications, contributing to enhanced
-financial decision-making and global economic awareness.
+accurate and up-to-date exchange rate information into their applications.
 
 ### Built With
 
@@ -52,7 +51,7 @@ it is.</u>
 
 ```bash
 curl --request GET \
-  --url https://api.exchangeit.app/currencies \
+  --url https://api.exchangeit.app/v1/currencies \
   --header 'Accept: application/json'
 ```
 
@@ -60,7 +59,7 @@ curl --request GET \
 
 ```bash
 curl --request GET \
-  --url https://api.exchangeit.app/currencies/AED/latest \
+  --url https://api.exchangeit.app/v1/currencies/AED/latest \
   --header 'Accept: application/json'
 ```
 
@@ -85,28 +84,10 @@ You can download the app
 from [Google Play](https://play.google.com/store/apps/details?id=dev.voir.anyexchange.android&pli=1)
 (coming soon to App Store)
 
-<!-- -->
-
-## Roadmap
-
-- [ ] Mobile App
-    - [ ] Android app new design
-    - [ ] iOS release
-- [ ] API
-    - [ ] New currency field: available banknotes and coins
-    - [ ] New currency field: central banks
-    - [ ] New currency field: country flags and crypto logos
-    - [ ] New endpoint: list of synchronisation sources
-- [ ] Backend
-    - [ ] New synchronisation sources
-- [ ] Dashboard: internal tool to modify and update currency data
+## Contact
 
 See the [open issues](https://github.com/github_username/repo_name/issues) for a full list of
 proposed features (and known issues).
-
-<!-- -->
-
-## Contact
 
 Gary Bezruchko - [@checksanity](https://t.me/checksanity) - hello@exchangeit.app
 
