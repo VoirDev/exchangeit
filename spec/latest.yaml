@@ -448,12 +448,12 @@ components:
             crypto currencies)
           nullable: true
           example: aed
-        iso_numeric:
+        isoNumeric:
           type: string
           description: Currency code in ISO numeric format
           nullable: true
           example: '784'
-        title_origin:
+        titleOrigin:
           type: string
           description: Currency title on origin language
           example: درهم إماراتي
@@ -491,12 +491,17 @@ components:
           description: Currency rating. Higher value means higher popularity
           example: 100
           nullable: true
+        hasRates:
+          type: boolean
+          description: Currency has exchange rates on API
+          example: true
+          nullable: false
       required:
         - alias
         - title
         - code
-        - iso_numeric
-        - title_origin
+        - isoNumeric
+        - titleOrigin
         - crypto
         - obsolete
         - symbol
@@ -504,6 +509,7 @@ components:
         - url
         - popular
         - rating
+        - hasRates
     DataDto:
       type: object
       properties:
@@ -555,12 +561,12 @@ components:
             crypto currencies)
           nullable: true
           example: aed
-        iso_numeric:
+        isoNumeric:
           type: string
           description: Currency code in ISO numeric format
           nullable: true
           example: '784'
-        title_origin:
+        titleOrigin:
           type: string
           description: Currency title on origin language
           example: درهم إماراتي
@@ -598,6 +604,11 @@ components:
           description: Currency rating. Higher value means higher popularity
           example: 100
           nullable: true
+        hasRates:
+          type: boolean
+          description: Currency has exchange rates on API
+          example: true
+          nullable: false
         description:
           type: string
           description: Currency description
@@ -624,8 +635,8 @@ components:
         - alias
         - title
         - code
-        - iso_numeric
-        - title_origin
+        - isoNumeric
+        - titleOrigin
         - crypto
         - obsolete
         - symbol
@@ -633,6 +644,7 @@ components:
         - url
         - popular
         - rating
+        - hasRates
         - description
         - localizedDescription
         - centralBanks
@@ -660,6 +672,7 @@ components:
         - alias
         - rate
         - date
+        - fluctuation
     CurrencyLatestRatesDto:
       type: object
       properties:
