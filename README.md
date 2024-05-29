@@ -86,7 +86,7 @@ from [Google Play](https://play.google.com/store/apps/details?id=dev.voir.anyexc
 
 ## Contact
 
-See the [open issues](https://github.com/github_username/repo_name/issues) for a full list of
+See the [open issues](https://github.com/VoirDev/exchangeit/issues) for a full list of
 proposed features (and known issues).
 
 Gary Bezruchko - [@checksanity](https://t.me/checksanity) - hello@exchangeit.app
