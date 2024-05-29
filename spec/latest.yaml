@@ -98,6 +98,14 @@ paths:
             type: array
             items:
               type: string
+        - name: forPopular
+          required: false
+          in: query
+          description: >-
+            If set, return exchange rates only for specified number of popular
+            currencies
+          schema:
+            type: number
       responses:
         '200':
           description: Currency with latest available exchange rates
@@ -146,6 +154,14 @@ paths:
             type: array
             items:
               type: string
+        - name: forPopular
+          required: false
+          in: query
+          description: >-
+            If set, return exchange rates only for specified number of popular
+            currencies
+          schema:
+            type: number
       responses:
         '200':
           description: Currency with exchange rates for specified date
@@ -201,6 +217,14 @@ paths:
             type: array
             items:
               type: string
+        - name: forPopular
+          required: false
+          in: query
+          description: >-
+            If set, return exchange rates only for specified number of popular
+            currencies
+          schema:
+            type: number
       responses:
         '200':
           description: Currency with exchange rates for specified date range
@@ -258,6 +282,14 @@ paths:
             type: array
             items:
               type: string
+        - name: forPopular
+          required: false
+          in: query
+          description: >-
+            If set, return exchange rates only for specified number of popular
+            currencies
+          schema:
+            type: number
       responses:
         '200':
           description: Currency with exchange rates for specified month range
@@ -354,10 +386,51 @@ paths:
           description: Source not found
       tags:
         - Sources
+  /v1/converter:
+    get:
+      operationId: ConverterController_convert
+      summary: Convert currency exchange rate to another currency with specified amount
+      parameters:
+        - name: amount
+          required: true
+          in: query
+          description: Amount
+          example: 100
+          schema:
+            type: number
+        - name: from
+          required: true
+          in: query
+          description: From currency alias
+          example: usd
+          schema:
+            type: string
+        - name: to
+          required: true
+          in: query
+          description: To currency alias
+          example: rub
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Result of conversion
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/DataDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/ConvertResultDto'
+        '404':
+          description: Currency with alias not found
+      tags:
+        - Converter
 info:
   title: 'API Documentation'
   description: OpenAPI specification for Exchange It.
-  version: 0.0.5
+  version: 0.0.6
   contact: { }
 tags: [ ]
 servers: [
@@ -430,6 +503,57 @@ components:
       required:
         - meta
         - data
+    CurrencyImageDto:
+      type: object
+      properties:
+        '16':
+          type: string
+          description: Link to image with size 16px
+          example: /currencies/aed/flag_16.png
+        '32':
+          type: string
+          description: Link to image with size 32px
+          example: /currencies/aed/flag_32.png
+        '64':
+          type: string
+          description: Link to image with size 64px
+          example: /currencies/aed/flag_64.png
+        '128':
+          type: string
+          description: Link to image with size 128px
+          example: /currencies/aed/flag_128.png
+        '256':
+          type: string
+          description: Link to image with size 256px
+          example: /currencies/aed/flag_256.png
+        '512':
+          type: string
+          description: Link to image with size 512px
+          example: /currencies/aed/flag_512.png
+        '1024':
+          type: string
+          description: Link to image with size 1024px
+          example: /currencies/aed/flag_1024.png
+        svg:
+          type: string
+          description: Link to image in SVG format
+          example: /currencies/aed/flag.svg
+    CurrencyFlagDto:
+      type: object
+      properties:
+        default:
+          nullable: true
+          description: Flag image with ratio 3:4
+          allOf:
+            - $ref: '#/components/schemas/CurrencyImageDto'
+        square:
+          nullable: true
+          description: Flag image with ratio 1:1
+          allOf:
+            - $ref: '#/components/schemas/CurrencyImageDto'
+      required:
+        - default
+        - square
     CurrencyDto:
       type: object
       properties:
@@ -437,10 +561,6 @@ components:
           type: string
           description: Unique currency alias
           example: aed
-        title:
-          type: string
-          description: Currency title
-          example: United Arab Emirates Dirham
         code:
           type: string
           description: >-
@@ -448,6 +568,10 @@ components:
             crypto currencies)
           nullable: true
           example: aed
+        title:
+          type: string
+          description: Currency title
+          example: United Arab Emirates Dirham
         isoNumeric:
           type: string
           description: Currency code in ISO numeric format
@@ -496,10 +620,20 @@ components:
           description: Currency has exchange rates on API
           example: true
           nullable: false
+        flag:
+          description: Flag of the currency origin country (null if crypto currency)
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CurrencyFlagDto'
+        logo:
+          description: Logo of the currency
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CurrencyImageDto'
       required:
         - alias
-        - title
         - code
+        - title
         - isoNumeric
         - titleOrigin
         - crypto
@@ -510,6 +644,8 @@ components:
         - popular
         - rating
         - hasRates
+        - flag
+        - logo
     DataDto:
       type: object
       properties:
@@ -550,10 +686,6 @@ components:
           type: string
           description: Unique currency alias
           example: aed
-        title:
-          type: string
-          description: Currency title
-          example: United Arab Emirates Dirham
         code:
           type: string
           description: >-
@@ -561,6 +693,10 @@ components:
             crypto currencies)
           nullable: true
           example: aed
+        title:
+          type: string
+          description: Currency title
+          example: United Arab Emirates Dirham
         isoNumeric:
           type: string
           description: Currency code in ISO numeric format
@@ -609,6 +745,16 @@ components:
           description: Currency has exchange rates on API
           example: true
           nullable: false
+        flag:
+          description: Flag of the currency origin country (null if crypto currency)
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CurrencyFlagDto'
+        logo:
+          description: Logo of the currency
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CurrencyImageDto'
         description:
           type: string
           description: Currency description
@@ -633,8 +779,8 @@ components:
             $ref: '#/components/schemas/CentralBankDto'
       required:
         - alias
-        - title
         - code
+        - title
         - isoNumeric
         - titleOrigin
         - crypto
@@ -645,6 +791,8 @@ components:
         - popular
         - rating
         - hasRates
+        - flag
+        - logo
         - description
         - localizedDescription
         - centralBanks
@@ -654,6 +802,13 @@ components:
         alias:
           type: string
           description: Unique currency alias
+          example: aed
+        code:
+          type: string
+          description: >-
+            Currency code in ISO-format (usually unique but may duplicate for
+            crypto currencies)
+          nullable: true
           example: aed
         rate:
           type: number
@@ -670,6 +825,7 @@ components:
           example: -0.02
       required:
         - alias
+        - code
         - rate
         - date
         - fluctuation
@@ -679,6 +835,13 @@ components:
         alias:
           type: string
           description: Unique currency alias
+          example: aed
+        code:
+          type: string
+          description: >-
+            Currency code in ISO-format (usually unique but may duplicate for
+            crypto currencies)
+          nullable: true
           example: aed
         title:
           type: string
@@ -691,6 +854,7 @@ components:
             $ref: '#/components/schemas/CurrencyLatestRateDto'
       required:
         - alias
+        - code
         - title
         - rates
     SimpleCurrencyRateDto:
@@ -700,6 +864,13 @@ components:
           type: string
           description: Unique currency alias
           example: aed
+        code:
+          type: string
+          description: >-
+            Currency code in ISO-format (usually unique but may duplicate for
+            crypto currencies)
+          nullable: true
+          example: aed
         rate:
           type: number
           description: Currency exchange rate
@@ -707,6 +878,7 @@ components:
           nullable: false
       required:
         - alias
+        - code
         - rate
     CurrencyRateByDateDto:
       type: object
@@ -714,6 +886,13 @@ components:
         alias:
           type: string
           description: Unique currency alias
+          example: aed
+        code:
+          type: string
+          description: >-
+            Currency code in ISO-format (usually unique but may duplicate for
+            crypto currencies)
+          nullable: true
           example: aed
         title:
           type: string
@@ -730,6 +909,7 @@ components:
             $ref: '#/components/schemas/SimpleCurrencyRateDto'
       required:
         - alias
+        - code
         - title
         - date
         - rates
@@ -755,6 +935,13 @@ components:
           type: string
           description: Unique currency alias
           example: aed
+        code:
+          type: string
+          description: >-
+            Currency code in ISO-format (usually unique but may duplicate for
+            crypto currencies)
+          nullable: true
+          example: aed
         title:
           type: string
           description: Currency title
@@ -774,6 +961,7 @@ components:
             $ref: '#/components/schemas/CurrencyHistoricalRateDto'
       required:
         - alias
+        - code
         - title
         - start
         - end
@@ -800,6 +988,13 @@ components:
           type: string
           description: Unique currency alias
           example: aed
+        code:
+          type: string
+          description: >-
+            Currency code in ISO-format (usually unique but may duplicate for
+            crypto currencies)
+          nullable: true
+          example: aed
         title:
           type: string
           description: Currency title
@@ -819,6 +1014,7 @@ components:
             $ref: '#/components/schemas/CurrencyMonthRateDto'
       required:
         - alias
+        - code
         - title
         - start
         - end
@@ -868,3 +1064,55 @@ components:
         - title
         - type
         - api
+    SimpleCurrencyDto:
+      type: object
+      properties:
+        alias:
+          type: string
+          description: Unique currency alias
+          example: aed
+        code:
+          type: string
+          description: >-
+            Currency code in ISO-format (usually unique but may duplicate for
+            crypto currencies)
+          nullable: true
+          example: aed
+        title:
+          type: string
+          description: Currency title
+          example: United Arab Emirates Dirham
+      required:
+        - alias
+        - code
+        - title
+    ConvertResultDto:
+      type: object
+      properties:
+        from:
+          description: From currency basic information
+          allOf:
+            - $ref: '#/components/schemas/SimpleCurrencyDto'
+        to:
+          description: To currency basic information
+          allOf:
+            - $ref: '#/components/schemas/SimpleCurrencyDto'
+        amount:
+          type: number
+          description: Conversion amount
+        result:
+          type: number
+          description: Conversion result
+        rate:
+          type: number
+          description: Exchange rate
+        reverseRate:
+          type: number
+          description: Reverse exchange rate
+      required:
+        - from
+        - to
+        - amount
+        - result
+        - rate
+        - reverseRate
