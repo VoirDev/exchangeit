@@ -13,6 +13,8 @@
     <a href="https://exchangeit.app/docs"><strong>Explore the API docs »</strong></a>
     <br />
     <br />
+    <a href="https://apps.apple.com/us/app/exchange-it-currency-rates/id6503626689">App Store</a>
+    ·
     <a href="https://play.google.com/store/apps/details?id=dev.voir.anyexchange.android&pli=1">Google Play</a>
     ·
     <a href="https://github.com/VoirDev/exchangeit/issues">Report Bug</a>
@@ -80,9 +82,7 @@ _Please refer to the [Github repository](https://github.com/VoirDev/exchangeit-k
 
 ## Mobile App
 
-You can download the app
-from [Google Play](https://play.google.com/store/apps/details?id=dev.voir.anyexchange.android&pli=1)
-(coming soon to App Store)
+You can download the app from [Google Play](https://play.google.com/store/apps/details?id=dev.voir.anyexchange.android&pli=1) or [App Store](https://apps.apple.com/us/app/exchange-it-currency-rates/id6503626689)
 
 ## Contact
 
