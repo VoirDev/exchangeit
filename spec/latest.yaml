@@ -711,7 +711,7 @@ paths:
 info:
   title: 'API Documentation'
   description: OpenAPI specification for Exchange It.
-  version: 0.0.6
+  version: 0.1.0
   contact: { }
 tags: [ ]
 servers: [
