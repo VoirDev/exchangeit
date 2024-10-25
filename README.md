@@ -61,7 +61,7 @@ curl --request GET \
 
 ```bash
 curl --request GET \
-  --url https://api.exchangeit.app/v1/currencies/AED/latest \
+  --url https://api.exchangeit.app/v2/currencies/aed/latest \
   --header 'Accept: application/json'
 ```
 

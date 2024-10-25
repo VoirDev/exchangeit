@@ -44,6 +44,7 @@ paths:
                           $ref: '#/components/schemas/CurrencyDto'
       tags:
         - Currencies
+
   /v1/currencies/{alias}:
     get:
       operationId: CurrencyController_getCurrency
@@ -72,7 +73,58 @@ paths:
           description: Currency not found
       tags:
         - Currencies
+
   /v1/currencies/{alias}/latest:
+    get:
+      operationId: CurrencyController_getLatestRates
+      summary: Get currency with latest rates
+      deprecated: true
+      parameters:
+        - name: alias
+          required: true
+          in: path
+          description: Currency unique alias (usually same as ISO-code)
+          example: aed
+          schema:
+            type: string
+        - name: for
+          required: false
+          in: query
+          description: >-
+            List of currency aliases to obtain their respective exchange rates.
+            If the list is empty, retrieve rates for all available currencies.
+          example:
+            - eur
+            - rub
+            - usd
+          schema:
+            type: array
+            items:
+              type: string
+        - name: forPopular
+          required: false
+          in: query
+          description: >-
+            If set, return exchange rates only for specified number of popular
+            currencies
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Currency with latest available exchange rates
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/DataDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/CurrencyLatestRatesDto'
+        '404':
+          description: Currency not found
+      tags:
+        - Currencies
+  /v2/currencies/{alias}/latest:
     get:
       operationId: CurrencyController_getLatestRates
       summary: Get currency with latest rates
@@ -121,7 +173,66 @@ paths:
           description: Currency not found
       tags:
         - Currencies
+
   /v1/currencies/{alias}/historical:
+    get:
+      operationId: CurrencyController_getHistoricalRates
+      summary: Get currency exchange rates by date
+      deprecated: true
+      parameters:
+        - name: alias
+          required: true
+          in: path
+          description: Currency unique alias (usually same as ISO-code)
+          example: aed
+          schema:
+            type: string
+        - name: date
+          required: true
+          in: query
+          description: Date
+          example: '2021-10-04'
+          schema:
+            type: string
+        - name: for
+          required: false
+          in: query
+          description: >-
+            List of currency aliases to obtain their respective exchange rates.
+            If the list is empty, retrieve rates for all available currencies.
+          example:
+            - eur
+            - rub
+            - usd
+          schema:
+            type: array
+            items:
+              type: string
+        - name: forPopular
+          required: false
+          in: query
+          description: >-
+            If set, return exchange rates only for specified number of popular
+            currencies
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Currency with exchange rates for specified date
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/DataDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/CurrencyRateByDateDto'
+        '404':
+          description: Currency not found
+      tags:
+        - Currencies
+
+  /v2/currencies/{alias}/historical:
     get:
       operationId: CurrencyController_getHistoricalRates
       summary: Get currency exchange rates by date
@@ -177,7 +288,75 @@ paths:
           description: Currency not found
       tags:
         - Currencies
+
   /v1/currencies/{alias}/range:
+    get:
+      operationId: CurrencyController_getHistoricalRangeRates
+      summary: Get currency exchange rates by date range
+      deprecated: true
+      parameters:
+        - name: alias
+          required: true
+          in: path
+          description: Currency unique alias (usually same as ISO-code)
+          example: aed
+          schema:
+            type: string
+        - name: start
+          required: true
+          in: query
+          description: Start date
+          example: '2021-10-04'
+          schema:
+            type: string
+        - name: end
+          required: true
+          in: query
+          description: End date
+          example: '2021-10-04'
+          schema:
+            type: string
+        - name: for
+          required: false
+          in: query
+          description: >-
+            List of currency aliases to obtain their respective exchange rates.
+            If the list is empty, retrieve rates for all available currencies.
+          example:
+            - eur
+            - rub
+            - usd
+          schema:
+            type: array
+            items:
+              type: string
+        - name: forPopular
+          required: false
+          in: query
+          description: >-
+            If set, return exchange rates only for specified number of popular
+            currencies
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Currency with exchange rates for specified date range
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/DataDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/CurrencyHistoricalRatesDto'
+        '400':
+          description: Start date should be less than end date
+        '404':
+          description: Currency not found
+      tags:
+        - Currencies
+
+  /v2/currencies/{alias}/range:
     get:
       operationId: CurrencyController_getHistoricalRangeRates
       summary: Get currency exchange rates by date range
@@ -242,7 +421,74 @@ paths:
           description: Currency not found
       tags:
         - Currencies
+
   /v1/currencies/{alias}/monthly:
+    get:
+      operationId: CurrencyController_getMonthlyRates
+      summary: Get currency exchange rates by month range
+      deprecated: true
+      parameters:
+        - name: alias
+          required: true
+          in: path
+          description: Currency unique alias (usually same as ISO-code)
+          example: aed
+          schema:
+            type: string
+        - name: start
+          required: true
+          in: query
+          description: Start date
+          example: '2021-10-04'
+          schema:
+            type: string
+        - name: end
+          required: true
+          in: query
+          description: End date
+          example: '2021-10-04'
+          schema:
+            type: string
+        - name: for
+          required: false
+          in: query
+          description: >-
+            List of currency aliases to obtain their respective exchange rates.
+            If the list is empty, retrieve rates for all available currencies.
+          example:
+            - eur
+            - rub
+            - usd
+          schema:
+            type: array
+            items:
+              type: string
+        - name: forPopular
+          required: false
+          in: query
+          description: >-
+            If set, return exchange rates only for specified number of popular
+            currencies
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Currency with exchange rates for specified month range
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/DataDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/CurrencyMonthlyRatesDto'
+        '400':
+          description: Start date should be less than end date
+        '404':
+          description: Currency not found
+      tags:
+        - Currencies
+  /v2/currencies/{alias}/monthly:
     get:
       operationId: CurrencyController_getMonthlyRates
       summary: Get currency exchange rates by month range
@@ -307,7 +553,41 @@ paths:
           description: Currency not found
       tags:
         - Currencies
+
   /v1/rates/latest:
+    get:
+      operationId: RatesController_getLatestRates
+      summary: Get latest rates for selected currencies
+      deprecated: true
+      parameters:
+        - name: aliases
+          required: true
+          in: query
+          description: List of currency aliases
+          example:
+            - aed
+            - rub
+            - usd
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Requested latest exchange rates
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/DataDto'
+                  - properties:
+                      data:
+                        $ref: '#/components/schemas/RatesDto'
+        '404':
+          description: Exchange rates for codes not found
+      tags:
+        - Rates
+  /v2/rates/latest:
     get:
       operationId: RatesController_getLatestRates
       summary: Get latest rates for selected currencies
@@ -339,6 +619,7 @@ paths:
           description: Exchange rates for codes not found
       tags:
         - Rates
+
   /v1/sources:
     get:
       operationId: SourcesController_getSources
@@ -430,7 +711,7 @@ paths:
 info:
   title: 'API Documentation'
   description: OpenAPI specification for Exchange It.
-  version: 0.0.6
+  version: 0.1.0
   contact: { }
 tags: [ ]
 servers: [
@@ -977,10 +1258,41 @@ components:
           description: Currency rates
           type: array
           items:
-            $ref: '#/components/schemas/SimpleCurrencyRateDto'
+            $ref: '#/components/schemas/CurrencyMonthlyRateDto'
       required:
         - month
         - rates
+    CurrencyMonthlyRateDto:
+      type: object
+      properties:
+        alias:
+          type: string
+          description: Unique currency alias
+          example: aed
+        code:
+          type: string
+          description: >-
+            Currency code in ISO-format (usually unique but may duplicate for
+            crypto currencies)
+          nullable: true
+          example: aed
+        rate:
+          type: number
+          description: Currency exchange rate
+          example: 0.0089
+          nullable: false
+        min:
+          type: number
+          description: Minimal exchange rate in the month
+          example: 10.02
+        max:
+          type: number
+          description: Maximum exchange rate in month
+          example: 12.02
+      required:
+        - alias
+        - code
+        - rate
     CurrencyMonthlyRatesDto:
       type: object
       properties:
