@@ -126,7 +126,7 @@ paths:
         - Currencies
   /v2/currencies/{alias}/latest:
     get:
-      operationId: CurrencyController_getLatestRates
+      operationId: CurrencyController_getLatestRatesV2
       summary: Get currency with latest rates
       parameters:
         - name: alias
@@ -231,10 +231,9 @@ paths:
           description: Currency not found
       tags:
         - Currencies
-
   /v2/currencies/{alias}/historical:
     get:
-      operationId: CurrencyController_getHistoricalRates
+      operationId: CurrencyController_getHistoricalRatesV2
       summary: Get currency exchange rates by date
       parameters:
         - name: alias
@@ -355,10 +354,9 @@ paths:
           description: Currency not found
       tags:
         - Currencies
-
   /v2/currencies/{alias}/range:
     get:
-      operationId: CurrencyController_getHistoricalRangeRates
+      operationId: CurrencyController_getHistoricalRangeRatesV2
       summary: Get currency exchange rates by date range
       parameters:
         - name: alias
@@ -490,7 +488,7 @@ paths:
         - Currencies
   /v2/currencies/{alias}/monthly:
     get:
-      operationId: CurrencyController_getMonthlyRates
+      operationId: CurrencyController_getMonthlyRatesV2
       summary: Get currency exchange rates by month range
       parameters:
         - name: alias
@@ -589,7 +587,7 @@ paths:
         - Rates
   /v2/rates/latest:
     get:
-      operationId: RatesController_getLatestRates
+      operationId: RatesController_getLatestRatesV2
       summary: Get latest rates for selected currencies
       parameters:
         - name: aliases
