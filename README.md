@@ -30,17 +30,6 @@ application along with a versatile RESTful API for accessing current and histori
 exchange rates. This initiative aims to provide developers with a seamless toolset to integrate
 accurate and up-to-date exchange rate information into their applications.
 
-### Built With
-
-![Android](https://s3.timeweb.com/890fdb6a-sanity/static/sanity/github/assets/android.svg)
-![Kotlin](https://s3.timeweb.com/890fdb6a-sanity/static/sanity/github/assets/kotlin.svg)
-![React](https://s3.timeweb.com/890fdb6a-sanity/static/sanity/github/assets/react.svg)
-![JavaScript](https://s3.timeweb.com/890fdb6a-sanity/static/sanity/github/assets/javascript.svg)
-![TypeScript](https://s3.timeweb.com/890fdb6a-sanity/static/sanity/github/assets/typescript.svg)
-![NodeJS](https://s3.timeweb.com/890fdb6a-sanity/static/sanity/github/assets/nodejs.svg)
-![NestJs](https://s3.timeweb.com/890fdb6a-sanity/static/sanity/github/assets/nestjs.svg)
-![NextJs](https://s3.timeweb.com/890fdb6a-sanity/static/sanity/github/assets/nextjs.svg)
-
 <!-- -->
 ## API
 
