@@ -92,8 +92,8 @@ paths:
       operationId: listCurrencies
       summary: List or search currencies
       description: |
-        Without `query`, currencies are ordered by `popularity`, most used first, so the first page
-        is what a currency picker needs; `sort` and `order` choose another order. With `query`, the
+        Without `query`, currencies are ordered by `popularity`, most used first — fiat ahead of
+        crypto, each by its own scale — so the first page is what a currency picker needs; `sort` and `order` choose another order. With `query`, the
         best matches come first — names in every language, codes, symbols and native names are
         searched, tolerating case and accents — and `sort` reorders the matches.
       parameters:
@@ -542,7 +542,7 @@ components:
       name: minPopularity
       in: query
       required: false
-      description: Only fiat currencies at least this popular (0–100).
+      description: Only currencies at least this popular (0–100), each on the scale of its kind.
       schema: { type: integer, format: int32, minimum: 0, maximum: 100 }
     CurrencySort:
       name: sort
@@ -708,7 +708,7 @@ components:
       type: object
       description: Every rendition of one image; URLs are absolute.
       properties:
-        svg: { type: string, format: uri, example: 'https://world-assets.sole.tools/assets/flags/eu_1x1.svg' }
+        svg: { type: string, format: uri, example: 'https://world-assets.sole.tools/flags/eu_1x1.svg' }
         png: { $ref: '#/components/schemas/ImageSizes' }
         webp: { $ref: '#/components/schemas/ImageSizes' }
         jpg: { $ref: '#/components/schemas/ImageSizes' }
@@ -771,7 +771,7 @@ components:
           format: int32
           minimum: 0
           maximum: 100
-          description: How widely a fiat currency is used today; 0 when obsolete; absent for crypto.
+          description: How widely the currency is used today, 0 when obsolete. Fiat and crypto are scored on separate scales — the US dollar and Bitcoin are both 100 — so compare only within a kind.
           example: 96
         isObsolete: { type: boolean, example: false }
         hasRates: { type: boolean, description: Whether exchange rates are available., example: true }
