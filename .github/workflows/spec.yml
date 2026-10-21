@@ -1,0 +1,43 @@
+name: Spec
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spec-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Lint OpenAPI documents
+        run: npx --yes @redocly/cli@2 lint --format=github-actions
+
+  production:
+    name: Matches production
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare spec/latest.yaml with the served document
+        run: |
+          curl --fail --silent --show-error --retry 3 https://api.exchangeit.app/v3/openapi.yaml -o served.yaml
+          if ! diff -u spec/latest.yaml served.yaml; then
+            echo "::error file=spec/latest.yaml::spec/latest.yaml differs from https://api.exchangeit.app/v3/openapi.yaml"
+            exit 1
+          fi
