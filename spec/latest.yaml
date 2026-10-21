@@ -1,1019 +1,1025 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
-  title: Exchange It API
-  description: OpenAPI specification for Exchange It.
-  version: 0.3.0
+  title: ExchangeIt API
+  version: 3.0.0
+  description: |
+    Currencies, crypto assets and exchange rates: the latest rates, every published day since 1996,
+    monthly aggregates, conversions and cross rates between any two currencies.
+
+    This reference is generated from the API's OpenAPI document, served at
+    [`/v3/openapi.yaml`](/v3/openapi.yaml) for generating clients.
+
+    ## Currency identifiers
+
+    Every currency has one `id`, used in paths, in `base`, `symbols`, `from`, `to` and as the key
+    of every rate map:
+
+    | Kind | `id` | Example |
+    | --- | --- | --- |
+    | Fiat currency | ISO 4217 code, upper case | `EUR`, `USD`, `MNT` |
+    | Crypto asset | Alias, lower case | `btc`, `eth`, `mnt` |
+
+    Fiat codes and crypto aliases can coincide (`MNT` is the Mongolian tögrög, `mnt` is Mantle), so
+    the case decides. An id that matches nothing exactly is matched ignoring case, preferring fiat:
+    `eur` finds `EUR`, `mnt` finds Mantle. Responses always spell ids as in the table.
+
+    ## Rates
+
+    A rate is the number of `quote` units one unit of `base` buys. `base` defaults to `USD`; any
+    currency with rates can be the base, and rates between two non-USD currencies are computed
+    from their USD rates for the same date. Rates are mid-market rates. Latest rates are refreshed
+    several times a day; historical and time-series rates are one rate per currency per day.
+
+    ## Localization
+
+    Names follow `Accept-Language`, or the `lang` parameter, which overrides it and gives each
+    language its own cacheable URL. `GET /locales` lists the supported languages. Responses name
+    the language they are written in with `Content-Language`.
+
+    ## Caching
+
+    Every successful response carries a strong `ETag` and `Cache-Control`; send `If-None-Match` to
+    get `304 Not Modified`. Cache lifetimes follow the data: one day for past dates, one hour for
+    reference data, one minute for latest rates.
+
+    ## Limits
+
+    Requests are free and need no key. Each client — an API key, or the caller's address without
+    one — has an allowance of request units that refills continuously. Most requests cost 1 unit;
+    a time series costs one unit per 1,000 points it returns (symbols × points), rounded up. Every
+    response states the allowance in `RateLimit-Policy` and what is left in `RateLimit`; spending it
+    answers `429` with `Retry-After`. `GET /meta` shows the caller's allowance. An API key, sent as
+    `X-API-Key`, raises the allowance; ask for one at hello@exchangeit.app.
+
+    Responses are also bounded in size: at most 100 items per page, 50 symbols per request, and
+    daily time series of at most 5 years — use `interval=month` for longer ranges.
+
+    ## Errors
+
+    Failures are RFC 9457 problem documents (`application/problem+json`).
+  contact:
+    name: Exchange It
+    url: https://exchangeit.app/
+    email: hello@exchangeit.app
+  license:
+    name: CC BY 4.0 (data)
+    url: https://creativecommons.org/licenses/by/4.0/
 
 servers:
-  - url: https://api.exchangeit.app/
-  - url: https://api.exchangeit.ru/
+  - url: https://api.exchangeit.app/v3
+  - url: /v3
+
+security:
+  - {}
+  - ApiKey: []
 
 tags:
-  - name: Currencies
-  - name: Rates
-  - name: Sources
-  - name: Converter
+  - name: currencies
+    description: Fiat currencies and crypto assets.
+  - name: reference
+    description: Countries, central banks and languages currencies are described with.
+  - name: rates
+    description: Latest, historical and time-series exchange rates.
+  - name: conversion
+    description: Converting amounts and comparing two currencies.
+  - name: meta
+    description: Data freshness and the caller's limits.
 
 paths:
-  /v1/currencies:
+  /currencies:
     get:
-      operationId: getCurrencies
-      tags: [Currencies]
-      summary: Get list of currencies
+      tags: [currencies]
+      operationId: listCurrencies
+      summary: List or search currencies
+      description: |
+        Without `query`, currencies are ordered by `popularity`, most used first — fiat ahead of
+        crypto, each by its own scale — so the first page is what a currency picker needs; `sort` and `order` choose another order. With `query`, the
+        best matches come first — names in every language, codes, symbols and native names are
+        searched, tolerating case and accents — and `sort` reorders the matches.
       parameters:
-        - $ref: '#/components/parameters/CryptoQueryParam'
-        - $ref: '#/components/parameters/SearchQueryParam'
-        - $ref: '#/components/parameters/WithObsoleteQueryParam'
-        - $ref: '#/components/parameters/WithNoRatesQueryParam'
+        - $ref: '#/components/parameters/Query'
+        - $ref: '#/components/parameters/Kind'
+        - $ref: '#/components/parameters/Status'
+        - $ref: '#/components/parameters/HasRates'
+        - $ref: '#/components/parameters/CountryFilter'
+        - $ref: '#/components/parameters/CentralBankFilter'
+        - $ref: '#/components/parameters/MinPopularity'
+        - $ref: '#/components/parameters/CurrencySort'
+        - $ref: '#/components/parameters/Order'
+        - $ref: '#/components/parameters/CurrencyInclude'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Lang'
       responses:
         '200':
-          description: List of available currencies
+          description: One page of currencies.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            Content-Language: { $ref: '#/components/headers/ContentLanguage' }
+            RateLimit: { $ref: '#/components/headers/RateLimit' }
+            RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyListResponse'
-        '400':
-          $ref: '#/components/responses/BadRequestResponse'
+              schema: { $ref: '#/components/schemas/CurrencyPage' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /v1/currencies/{alias}:
+  /currencies/{id}:
     get:
+      tags: [currencies]
       operationId: getCurrency
-      tags: [Currencies]
-      summary: Get currency detailed information
+      summary: Get one currency
+      description: Everything known about a currency, including where it is used, who issues it and the dates rates exist for.
       parameters:
-        - $ref: '#/components/parameters/AliasPathParam'
+        - $ref: '#/components/parameters/CurrencyId'
+        - $ref: '#/components/parameters/Lang'
       responses:
         '200':
-          description: Currency detailed information
+          description: The currency.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            Content-Language: { $ref: '#/components/headers/ContentLanguage' }
+            RateLimit: { $ref: '#/components/headers/RateLimit' }
+            RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyDetailedResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
+              schema: { $ref: '#/components/schemas/Currency' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /v2/currencies/{alias}/latest:
+  /countries:
     get:
-      operationId: getLatestRatesV2
-      tags: [Currencies]
-      summary: Get currency with latest rates
+      tags: [reference]
+      operationId: listCountries
+      summary: List or search countries
+      description: Countries and territories with the currencies they use, ordered by name in the response language.
       parameters:
-        - $ref: '#/components/parameters/AliasPathParam'
-        - $ref: '#/components/parameters/ForAliasesQueryParam'
-        - $ref: '#/components/parameters/ForPopularQueryParam'
+        - $ref: '#/components/parameters/Query'
+        - name: currency
+          in: query
+          required: false
+          description: Only countries using this currency.
+          schema: { $ref: '#/components/schemas/CurrencyIdValue' }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Lang'
       responses:
         '200':
-          description: Currency with latest available exchange rates
+          description: One page of countries.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            Content-Language: { $ref: '#/components/headers/ContentLanguage' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyLatestRatesResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
+              schema: { $ref: '#/components/schemas/CountryPage' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /v2/currencies/{alias}/historical:
+  /central-banks:
     get:
-      operationId: getHistoricalRatesV2
-      tags: [Currencies]
-      summary: Get currency exchange rates by date
+      tags: [reference]
+      operationId: listCentralBanks
+      summary: List or search central banks
       parameters:
-        - $ref: '#/components/parameters/AliasPathParam'
-        - $ref: '#/components/parameters/DateQueryParam'
-        - $ref: '#/components/parameters/ForAliasesQueryParam'
-        - $ref: '#/components/parameters/ForPopularQueryParam'
+        - $ref: '#/components/parameters/Query'
+        - name: currency
+          in: query
+          required: false
+          description: Only banks issuing or managing this currency.
+          schema: { $ref: '#/components/schemas/CurrencyIdValue' }
+        - $ref: '#/components/parameters/CountryFilter'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Lang'
       responses:
         '200':
-          description: Currency with exchange rates for specified date
+          description: One page of central banks.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyRateByDateResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
+              schema: { $ref: '#/components/schemas/CentralBankPage' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /v2/currencies/{alias}/range:
+  /central-banks/{id}:
     get:
-      operationId: getHistoricalRangeRatesV2
-      tags: [Currencies]
-      summary: Get currency exchange rates by date range
+      tags: [reference]
+      operationId: getCentralBank
+      summary: Get one central bank
       parameters:
-        - $ref: '#/components/parameters/AliasPathParam'
-        - $ref: '#/components/parameters/StartDateQueryParam'
-        - $ref: '#/components/parameters/EndDateQueryParam'
-        - $ref: '#/components/parameters/ForAliasesQueryParam'
-        - $ref: '#/components/parameters/ForPopularQueryParam'
+        - name: id
+          in: path
+          required: true
+          description: Central bank alias.
+          schema: { type: string, example: european-central-bank }
+        - $ref: '#/components/parameters/Lang'
       responses:
         '200':
-          description: Currency with exchange rates for specified date range
+          description: The central bank.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyHistoricalRatesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequestResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
+              schema: { $ref: '#/components/schemas/CentralBank' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /v2/currencies/{alias}/monthly:
+  /locales:
     get:
-      operationId: getMonthlyRatesV2
-      tags: [Currencies]
-      summary: Get currency exchange rates by month range
+      tags: [reference]
+      operationId: listLocales
+      summary: List the supported languages
+      description: Languages names are translated into, for `Accept-Language` and `lang`. English is always supported.
+      responses:
+        '200':
+          description: Every supported locale.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LocaleList' }
+        '304': { $ref: '#/components/responses/NotModified' }
+
+  /rates/latest:
+    get:
+      tags: [rates]
+      operationId: getLatestRates
+      summary: Get the latest rates
+      description: |
+        The most recent rate of each symbol against `base`, with its change since the previous
+        day's close. Where an intraday mid-market rate, refreshed several times a day, is available
+        it is served with `observedAt`; otherwise the latest daily rate is. Without `symbols`, every
+        currency that has rates is returned.
       parameters:
-        - $ref: '#/components/parameters/AliasPathParam'
-        - $ref: '#/components/parameters/StartDateQueryParam'
-        - $ref: '#/components/parameters/EndDateQueryParam'
-        - $ref: '#/components/parameters/ForAliasesQueryParam'
-        - $ref: '#/components/parameters/ForPopularQueryParam'
+        - $ref: '#/components/parameters/Base'
+        - $ref: '#/components/parameters/Symbols'
       responses:
         '200':
-          description: Currency with exchange rates for specified month range
+          description: Latest rates.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            RateLimit: { $ref: '#/components/headers/RateLimit' }
+            RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/CurrencyMonthlyRatesResponse'
-        '400':
-          $ref: '#/components/responses/BadRequestResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
+              schema: { $ref: '#/components/schemas/LatestRates' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /v2/rates/latest:
+  /rates/historical/{date}:
     get:
-      operationId: getLatestRatesForAliasesV2
-      tags: [Rates]
-      summary: Get latest rates for selected currencies
+      tags: [rates]
+      operationId: getHistoricalRates
+      summary: Get rates on a date
+      description: |
+        Each symbol's rate against `base` on one date. A date with no published rates — a future
+        date, or one before a currency's first rate — is `404`, unless `fallback=previous` asks
+        for the nearest earlier published date; `date` in the response always says which date the
+        rates are for.
       parameters:
-        - $ref: '#/components/parameters/AliasesQueryParam'
+        - name: date
+          in: path
+          required: true
+          description: The date, `yyyy-MM-dd`.
+          schema: { type: string, format: date, example: '2026-10-16' }
+        - $ref: '#/components/parameters/Base'
+        - $ref: '#/components/parameters/Symbols'
+        - name: fallback
+          in: query
+          required: false
+          description: What to do when the date has no rates.
+          schema:
+            type: string
+            enum: [none, previous]
+            default: none
       responses:
         '200':
-          description: Requested latest exchange rates
+          description: Rates on the date.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            RateLimit: { $ref: '#/components/headers/RateLimit' }
+            RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/RatesResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
+              schema: { $ref: '#/components/schemas/HistoricalRates' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /v1/sources:
+  /rates/timeseries:
     get:
-      operationId: getSources
-      tags: [Sources]
-      summary: Get list of available sources
-      responses:
-        '200':
-          description: List of available sources
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SourceListResponse'
-
-  /v1/sources/{alias}:
-    get:
-      operationId: getSource
-      tags: [Sources]
-      summary: Get source detailed information
+      tags: [rates]
+      operationId: getRateTimeseries
+      summary: Get rates over a period
+      description: |
+        A series per symbol for charts. `interval=day` returns each published day; `week` and
+        `month` aggregate them, each point carrying the period's open, close, average, minimum and
+        maximum. A daily series covers at most 5 years and a weekly one at most 20; `month` has no
+        limit. Costs one request unit per 1,000 points returned.
       parameters:
-        - $ref: '#/components/parameters/SourceAliasPathParam'
+        - $ref: '#/components/parameters/Base'
+        - name: symbols
+          in: query
+          required: true
+          description: Currencies to return series for, comma-separated; at most 10.
+          schema:
+            type: array
+            maxItems: 10
+            items: { $ref: '#/components/schemas/CurrencyIdValue' }
+          style: form
+          explode: false
+          example: [EUR, GBP]
+        - name: from
+          in: query
+          required: true
+          description: First date, inclusive.
+          schema: { type: string, format: date, example: '2025-10-16' }
+        - name: to
+          in: query
+          required: false
+          description: Last date, inclusive; defaults to the latest published date.
+          schema: { type: string, format: date, example: '2026-10-16' }
+        - name: interval
+          in: query
+          required: false
+          description: Point spacing.
+          schema:
+            type: string
+            enum: [day, week, month]
+            default: day
       responses:
         '200':
-          description: Source detailed information
+          description: The series.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            RateLimit: { $ref: '#/components/headers/RateLimit' }
+            RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/SourceResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
+              schema: { $ref: '#/components/schemas/RateTimeseries' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /v1/converter:
+  /pairs/{base}/{quote}:
     get:
+      tags: [conversion]
+      operationId: getPair
+      summary: Compare two currencies
+      description: |
+        Everything a currency-pair screen shows: the latest rate, its change over a day, a week, a
+        month and a year, and the year's lowest and highest rate.
+      parameters:
+        - name: base
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/CurrencyIdValue' }
+          example: EUR
+        - name: quote
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/CurrencyIdValue' }
+          example: USD
+        - $ref: '#/components/parameters/Lang'
+      responses:
+        '200':
+          description: The pair.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            RateLimit: { $ref: '#/components/headers/RateLimit' }
+            RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Pair' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /convert:
+    get:
+      tags: [conversion]
       operationId: convert
-      tags: [Converter]
-      summary: Convert currency exchange rate to another currency with specified amount
+      summary: Convert an amount
+      description: Converts an amount into one or more currencies at the latest rates, or at a date's rates.
       parameters:
-        - $ref: '#/components/parameters/AmountQueryParam'
-        - $ref: '#/components/parameters/FromCurrencyQueryParam'
-        - $ref: '#/components/parameters/ToCurrencyQueryParam'
+        - name: from
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/CurrencyIdValue' }
+          example: USD
+        - name: to
+          in: query
+          required: true
+          description: Currencies to convert into, comma-separated; at most 50.
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 50
+            items: { $ref: '#/components/schemas/CurrencyIdValue' }
+          style: form
+          explode: false
+          example: [EUR, JPY]
+        - name: amount
+          in: query
+          required: false
+          description: Amount of `from` to convert.
+          schema: { type: number, format: double, minimum: 0, default: 1 }
+        - name: date
+          in: query
+          required: false
+          description: Convert at this date's rates instead of the latest; the nearest earlier published date is used when it has none.
+          schema: { type: string, format: date }
       responses:
         '200':
-          description: Result of conversion
+          description: The conversion.
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            RateLimit: { $ref: '#/components/headers/RateLimit' }
+            RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/ConvertResultResponse'
-        '404':
-          $ref: '#/components/responses/NotFoundResponse'
+              schema: { $ref: '#/components/schemas/Conversion' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /meta:
+    get:
+      tags: [meta]
+      operationId: getMeta
+      summary: Data freshness and limits
+      description: When rates were last updated, the bounds requests must stay within, and the caller's current allowance. Costs nothing.
+      responses:
+        '200':
+          description: Meta information.
+          headers:
+            Cache-Control: { $ref: '#/components/headers/CacheControl' }
+            RateLimit: { $ref: '#/components/headers/RateLimit' }
+            RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Meta' }
 
 components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Optional. Raises the caller's allowance; without it, limits apply per address.
+
   parameters:
-    AliasPathParam:
-      name: alias
+    CurrencyId:
+      name: id
       in: path
       required: true
-      description: Currency unique alias (usually same as ISO code)
-      schema:
-        type: string
-      example: aed
-
-    SourceAliasPathParam:
-      name: alias
-      in: path
-      required: true
-      description: Source alias
-      schema:
-        type: string
-      example: cbr
-
-    CryptoQueryParam:
-      name: crypto
+      description: Currency id; see "Currency identifiers".
+      schema: { $ref: '#/components/schemas/CurrencyIdValue' }
+      example: EUR
+    Query:
+      name: query
       in: query
       required: false
-      description: Show crypto currencies
-      schema:
-        type: boolean
-
-    SearchQueryParam:
-      name: search
+      description: Search text; matches names in every language, codes, symbols and native names, ignoring case and accents.
+      schema: { type: string, minLength: 1, maxLength: 100 }
+      example: dollar
+    Kind:
+      name: kind
       in: query
       required: false
-      description: Search query
-      schema:
-        type: string
-
-    WithObsoleteQueryParam:
-      name: withObsolete
+      description: Only fiat currencies or only crypto assets.
+      schema: { $ref: '#/components/schemas/CurrencyKind' }
+    Status:
+      name: status
       in: query
       required: false
-      description: Include obsolete currencies
+      description: Active currencies, obsolete ones, or both.
       schema:
-        type: boolean
-
-    WithNoRatesQueryParam:
-      name: withNoRates
+        type: string
+        enum: [active, obsolete, all]
+        default: active
+    HasRates:
+      name: hasRates
       in: query
       required: false
-      description: Include currencies without exchange rates
-      schema:
-        type: boolean
-
-    DateQueryParam:
-      name: date
-      in: query
-      required: true
-      description: Date
-      schema:
-        type: string
-        format: date
-      example: '2021-10-04'
-
-    StartDateQueryParam:
-      name: start
-      in: query
-      required: true
-      description: Start date
-      schema:
-        type: string
-        format: date
-      example: '2021-10-04'
-
-    EndDateQueryParam:
-      name: end
-      in: query
-      required: true
-      description: End date
-      schema:
-        type: string
-        format: date
-      example: '2021-10-04'
-
-    ForAliasesQueryParam:
-      name: for
+      description: Only currencies with (`true`) or without (`false`) exchange rates; both when absent.
+      schema: { type: boolean }
+    CountryFilter:
+      name: country
       in: query
       required: false
-      description: List of currency aliases to obtain their respective exchange rates. If empty, retrieve rates for all available currencies.
+      description: Only those used in or serving this country, by ISO 3166-1 alpha-2 code.
+      schema: { type: string, pattern: '^[A-Za-z]{2}$', example: DE }
+    CentralBankFilter:
+      name: centralBank
+      in: query
+      required: false
+      description: Only currencies issued or managed by this central bank.
+      schema: { type: string, example: european-central-bank }
+    MinPopularity:
+      name: minPopularity
+      in: query
+      required: false
+      description: Only currencies at least this popular (0–100), each on the scale of its kind.
+      schema: { type: integer, format: int32, minimum: 0, maximum: 100 }
+    CurrencySort:
+      name: sort
+      in: query
+      required: false
+      description: Order of the list; `popularity` unless `query` is given, which orders by relevance.
+      schema:
+        type: string
+        enum: [relevance, popularity, name, code, year]
+    Order:
+      name: order
+      in: query
+      required: false
+      description: Direction of `sort`; descending for `popularity` and `relevance`, ascending otherwise.
+      schema:
+        type: string
+        enum: [asc, desc]
+    CurrencyInclude:
+      name: include
+      in: query
+      required: false
+      description: Related data to embed in each list item, comma-separated. Flags and logos are always included; `flag` and `logo` are accepted and change nothing.
       schema:
         type: array
         items:
           type: string
+          enum: [countries, centralBanks]
       style: form
-      explode: true
-      example: [eur, rub, usd]
-
-    ForPopularQueryParam:
-      name: forPopular
+      explode: false
+    Page:
+      name: page
       in: query
       required: false
-      description: Return exchange rates only for the specified number of popular currencies
-      schema:
-        type: integer
-        format: int32
-        minimum: 1
-
-    AliasesQueryParam:
-      name: aliases
+      description: Zero-based page number.
+      schema: { type: integer, format: int32, minimum: 0, default: 0 }
+    Size:
+      name: size
       in: query
-      required: true
-      description: List of currency aliases
+      required: false
+      description: Items per page.
+      schema: { type: integer, format: int32, minimum: 1, maximum: 100, default: 50 }
+    Lang:
+      name: lang
+      in: query
+      required: false
+      description: Language of names, overriding `Accept-Language`; see `GET /locales`.
+      schema: { type: string, example: de }
+    Base:
+      name: base
+      in: query
+      required: false
+      description: Currency rates are quoted against.
+      schema:
+        allOf:
+          - $ref: '#/components/schemas/CurrencyIdValue'
+        default: USD
+    Symbols:
+      name: symbols
+      in: query
+      required: false
+      description: Currencies to return, comma-separated, at most 50; every currency with rates when absent.
       schema:
         type: array
-        items:
-          type: string
+        maxItems: 50
+        items: { $ref: '#/components/schemas/CurrencyIdValue' }
       style: form
-      explode: true
-      example: [aed, rub, usd]
+      explode: false
+      example: [EUR, GBP, btc]
 
-    AmountQueryParam:
-      name: amount
-      in: query
-      required: true
-      description: Amount
-      schema:
-        type: number
-        format: double
-      example: 100
-
-    FromCurrencyQueryParam:
-      name: from
-      in: query
-      required: true
-      description: From currency alias
-      schema:
-        type: string
-      example: usd
-
-    ToCurrencyQueryParam:
-      name: to
-      in: query
-      required: true
-      description: To currency alias
-      schema:
-        type: string
-      example: rub
+  headers:
+    ETag:
+      description: Validator of the response; send it back as `If-None-Match`.
+      schema: { type: string }
+    CacheControl:
+      description: How long the response may be reused.
+      schema: { type: string, example: 'public, max-age=60' }
+    ContentLanguage:
+      description: Language names are written in.
+      schema: { type: string, example: de }
+    RateLimit:
+      description: What is left of the caller's allowance (IETF RateLimit header), such as `"default";r=118;t=4`.
+      schema: { type: string }
+    RateLimitPolicy:
+      description: The caller's allowance (IETF RateLimit-Policy header), such as `"default";q=120;w=60`.
+      schema: { type: string }
+    RetryAfter:
+      description: Seconds until the request can succeed.
+      schema: { type: integer, format: int32 }
 
   responses:
-    BadRequestResponse:
-      description: Bad request
+    NotModified:
+      description: The cached response is still current.
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+    BadRequest:
+      description: A parameter is missing, malformed or out of bounds.
       content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorDto'
-
-    NotFoundResponse:
-      description: Resource not found
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: No such currency, date or resource.
       content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorDto'
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyRequests:
+      description: The caller's allowance is spent.
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+        RateLimit: { $ref: '#/components/headers/RateLimit' }
+        RateLimit-Policy: { $ref: '#/components/headers/RateLimitPolicy' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
 
   schemas:
-    CopyrightDto:
-      type: object
-      required: [title, description, url, email]
-      properties:
-        title:
-          type: string
-          example: Thanks for using Exchange It API
-        description:
-          type: string
-          example: Some description text
-        url:
-          type: string
-          format: uri
-          example: https://exchangeit.app/
-        email:
-          type: string
-          format: email
-          example: hello@exchangeit.app
+    CurrencyIdValue:
+      type: string
+      description: Fiat ISO 4217 code in upper case, or crypto alias in lower case; see "Currency identifiers".
+      minLength: 1
+      maxLength: 64
+      example: EUR
 
-    ListMetaDto:
-      type: object
-      required: [total, page]
-      properties:
-        total:
-          type: integer
-          format: int32
-          description: Total items in list
-          example: 10
-        perPage:
-          type: integer
-          format: int32
-          description: Items per page
-          example: 30
-        page:
-          type: integer
-          format: int32
-          description: Current page number, where 0 is first page
-          example: 0
-        nextPage:
-          type: integer
-          format: int32
-          nullable: true
-          description: Next page number or null if no next page
-          example: 1
-        totalPages:
-          type: integer
-          format: int32
-          description: Total pages
-          example: 1
+    CurrencyKind:
+      type: string
+      enum: [fiat, crypto]
 
-    ErrorDto:
+    Problem:
       type: object
-      required: [message]
+      description: RFC 9457 problem document.
+      required: [type, title, status]
       properties:
-        message:
+        type: { type: string, example: 'https://exchangeit.app/problems/invalid-parameter' }
+        title: { type: string, example: Invalid parameter }
+        status: { type: integer, format: int32, example: 400 }
+        detail: { type: string, example: 'symbols lists 60 currencies; at most 50 are allowed' }
+        instance: { type: string, example: /v3/rates/latest }
+        parameter:
           type: string
-          example: Currency not found
+          description: The parameter at fault, for invalid-parameter problems.
+          example: symbols
 
-    CurrencyImageDto:
+    PageInfo:
       type: object
+      required: [page, size, total, totalPages, hasNext]
       properties:
-        '16':
-          type: string
-          example: /currencies/aed/flag_16.png
-        '32':
-          type: string
-          example: /currencies/aed/flag_32.png
-        '64':
-          type: string
-          example: /currencies/aed/flag_64.png
-        '128':
-          type: string
-          example: /currencies/aed/flag_128.png
-        '256':
-          type: string
-          example: /currencies/aed/flag_256.png
-        '512':
-          type: string
-          example: /currencies/aed/flag_512.png
-        '1024':
-          type: string
-          example: /currencies/aed/flag_1024.png
-        svg:
-          type: string
-          example: /currencies/aed/flag.svg
+        page: { type: integer, format: int32, example: 0 }
+        size: { type: integer, format: int32, example: 50 }
+        total: { type: integer, format: int32, example: 305 }
+        totalPages: { type: integer, format: int32, example: 7 }
+        hasNext: { type: boolean, example: true }
 
-    CurrencyFlagDto:
+    ImageSizes:
       type: object
-      required: [default, square]
+      description: URLs of one bitmap format by size.
       properties:
-        default:
-          nullable: true
-          description: Flag image with ratio 3:4
-          $ref: '#/components/schemas/CurrencyImageDto'
-        square:
-          nullable: true
-          description: Flag image with ratio 1:1
-          $ref: '#/components/schemas/CurrencyImageDto'
+        xs: { type: string, format: uri }
+        sm: { type: string, format: uri }
+        md: { type: string, format: uri }
+        lg: { type: string, format: uri }
+        xl: { type: string, format: uri }
 
-    CurrencyDto:
+    Image:
       type: object
-      required:
-        - alias
-        - code
-        - title
-        - isoNumeric
-        - titleOrigin
-        - crypto
-        - obsolete
-        - symbol
-        - year
-        - url
-        - popular
-        - rating
-        - hasRates
+      description: Every rendition of one image; URLs are absolute.
       properties:
-        alias:
-          type: string
-          description: Unique currency alias
-          example: aed
-        code:
-          type: string
-          nullable: true
-          description: Currency code in ISO format
-          example: AED
-        title:
-          type: string
-          description: Currency title
-          example: United Arab Emirates Dirham
-        isoNumeric:
-          type: string
-          nullable: true
-          description: Currency code in ISO numeric format
-          example: '784'
-        titleOrigin:
-          type: string
-          nullable: true
-          description: Currency title in origin language
-          example: درهم إماراتي
-        crypto:
-          type: boolean
-          description: Is crypto currency
-          example: false
-        obsolete:
-          type: boolean
-          description: Is obsolete currency
-          example: false
-        symbol:
-          type: string
-          nullable: true
-          description: Currency symbol
-          example: ₺
-        year:
+        svg: { type: string, format: uri, example: 'https://world-assets.sole.tools/flags/eu_1x1.svg' }
+        png: { $ref: '#/components/schemas/ImageSizes' }
+        webp: { $ref: '#/components/schemas/ImageSizes' }
+        jpg: { $ref: '#/components/schemas/ImageSizes' }
+
+    Flag:
+      type: object
+      required: [id, emoji]
+      properties:
+        id: { type: string, example: eu }
+        emoji: { type: string, example: 🇪🇺 }
+        square: { $ref: '#/components/schemas/Image' }
+        wide: { $ref: '#/components/schemas/Image' }
+
+    CurrencyRef:
+      type: object
+      description: A currency named from another record.
+      required: [id, kind, code, name]
+      properties:
+        id: { $ref: '#/components/schemas/CurrencyIdValue' }
+        kind: { $ref: '#/components/schemas/CurrencyKind' }
+        code: { type: string, description: 'Display code — the ISO code or the ticker, upper case.', example: EUR }
+        name: { type: string, example: Euro }
+
+    CountryRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, description: ISO 3166-1 alpha-2 code., example: DE }
+        name: { type: string, example: Germany }
+        flag: { $ref: '#/components/schemas/Flag' }
+
+    CentralBankRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, example: european-central-bank }
+        name: { type: string, example: European Central Bank }
+
+    RateCoverage:
+      type: object
+      description: The dates rates exist for.
+      required: [firstDate, lastDate]
+      properties:
+        firstDate: { type: string, format: date, example: '1999-01-04' }
+        lastDate: { type: string, format: date, example: '2026-10-16' }
+
+    CurrencySummary:
+      type: object
+      required: [id, kind, code, name, decimalDigits, isObsolete, hasRates]
+      properties:
+        id: { $ref: '#/components/schemas/CurrencyIdValue' }
+        kind: { $ref: '#/components/schemas/CurrencyKind' }
+        code: { type: string, description: 'Display code — the ISO code or the ticker, upper case.', example: EUR }
+        name: { type: string, description: Name in the response language., example: Euro }
+        nativeName: { type: string, example: Euro }
+        symbol: { type: string, example: € }
+        decimalDigits: { type: integer, format: int32, description: "Minor-unit digits, or a crypto asset's divisibility.", example: 2 }
+        popularity:
           type: integer
           format: int32
-          nullable: true
-          description: Year of introduction
-          example: 2010
-        url:
-          type: string
-          format: uri
-          nullable: true
-          description: URL to currency
-          example: https://currency.com
-        popular:
-          type: boolean
-          description: Is popular currency
-          example: true
-        rating:
-          type: integer
-          format: int32
-          nullable: true
-          description: Currency rating
-          example: 100
-        hasRates:
-          type: boolean
-          description: Currency has exchange rates on API
-          example: true
+          minimum: 0
+          maximum: 100
+          description: How widely the currency is used today, 0 when obsolete. Fiat and crypto are scored on separate scales — the US dollar and Bitcoin are both 100 — so compare only within a kind.
+          example: 96
+        isObsolete: { type: boolean, example: false }
+        hasRates: { type: boolean, description: Whether exchange rates are available., example: true }
         flag:
-          nullable: true
-          description: Flag of the currency origin country
-          $ref: '#/components/schemas/CurrencyFlagDto'
+          description: Flag of the issuing territory, for a fiat currency that has one; absent for crypto and for gold, silver, platinum, palladium and special drawing rights.
+          allOf: [{ $ref: '#/components/schemas/Flag' }]
         logo:
-          nullable: true
-          description: Logo of the currency
-          $ref: '#/components/schemas/CurrencyImageDto'
-
-    CentralBankDto:
-      type: object
-      required: [alias, name, url]
-      properties:
-        alias:
-          type: string
-          description: Central bank unique alias
-          example: cbr
-        name:
-          type: string
-          description: Central bank name
-          example: The Central Bank of the Russian Federation
-        url:
-          type: string
-          format: uri
-          nullable: true
-          description: Link to official central bank source
-          example: https://cbr.ru/
-
-    CurrencyDetailedDto:
-      type: object
-      required:
-        - alias
-        - code
-        - title
-        - isoNumeric
-        - titleOrigin
-        - crypto
-        - obsolete
-        - symbol
-        - year
-        - url
-        - popular
-        - rating
-        - hasRates
-        - description
-        - localizedDescription
-        - centralBanks
-      properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        title:
-          type: string
-          example: United Arab Emirates Dirham
-        isoNumeric:
-          type: string
-          nullable: true
-          example: '784'
-        titleOrigin:
-          type: string
-          nullable: true
-          example: درهم إماراتي
-        crypto:
-          type: boolean
-          example: false
-        obsolete:
-          type: boolean
-          example: false
-        symbol:
-          type: string
-          nullable: true
-          example: ₺
-        year:
-          type: integer
-          format: int32
-          nullable: true
-          example: 2010
-        url:
-          type: string
-          format: uri
-          nullable: true
-          example: https://currency.com
-        popular:
-          type: boolean
-          example: true
-        rating:
-          type: integer
-          format: int32
-          nullable: true
-          example: 100
-        hasRates:
-          type: boolean
-          example: true
-        flag:
-          nullable: true
-          $ref: '#/components/schemas/CurrencyFlagDto'
-        logo:
-          nullable: true
-          $ref: '#/components/schemas/CurrencyImageDto'
-        description:
-          type: string
-          nullable: true
-        localizedDescription:
-          type: object
-          additionalProperties:
-            type: string
+          description: Logo of a crypto asset; absent for fiat.
+          allOf: [{ $ref: '#/components/schemas/Image' }]
+        countries:
+          type: array
+          description: Present with `include=countries`.
+          items: { $ref: '#/components/schemas/CountryRef' }
         centralBanks:
           type: array
-          items:
-            $ref: '#/components/schemas/CentralBankDto'
+          description: Present with `include=centralBanks`.
+          items: { $ref: '#/components/schemas/CentralBankRef' }
 
-    CurrencyLatestRateDto:
+    Currency:
+      allOf:
+        - $ref: '#/components/schemas/CurrencySummary'
+        - type: object
+          required: [countries, centralBanks]
+          properties:
+            numericCode: { type: string, description: ISO 4217 numeric code., example: '978' }
+            description: { type: string, description: English prose about the currency. }
+            websiteUrl: { type: string, format: uri, description: Official website of a crypto asset. }
+            introducedYear: { type: integer, format: int32, example: 1999 }
+            introducedOn: { type: string, format: date }
+            obsoleteOn: { type: string, format: date }
+            replacedBy: { $ref: '#/components/schemas/CurrencyRef' }
+            rateCoverage: { $ref: '#/components/schemas/RateCoverage' }
+
+    CurrencyPage:
       type: object
-      required: [alias, code, rate, date, fluctuation]
+      required: [items, page]
       properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        rate:
-          type: number
-          format: double
-          example: 0.0089
-        date:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CurrencySummary' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+
+    Country:
+      type: object
+      required: [id, name, currencies]
+      properties:
+        id: { type: string, example: DE }
+        name: { type: string, example: Germany }
+        flag: { $ref: '#/components/schemas/Flag' }
+        currencies:
+          type: array
+          items: { $ref: '#/components/schemas/CurrencyRef' }
+
+    CountryPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Country' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+
+    CentralBank:
+      type: object
+      required: [id, name, countries, currencies]
+      properties:
+        id: { type: string, example: european-central-bank }
+        name: { type: string, example: European Central Bank }
+        nativeName: { type: string }
+        websiteUrl: { type: string, format: uri }
+        establishedYear: { type: integer, format: int32, example: 1998 }
+        countries:
+          type: array
+          items: { $ref: '#/components/schemas/CountryRef' }
+        currencies:
+          type: array
+          items: { $ref: '#/components/schemas/CurrencyRef' }
+
+    CentralBankPage:
+      type: object
+      required: [items, page]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CentralBank' }
+        page: { $ref: '#/components/schemas/PageInfo' }
+
+    Locale:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, description: BCP 47 tag., example: pt-BR }
+
+    LocaleList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Locale' }
+
+    LatestRate:
+      type: object
+      required: [rate, date]
+      properties:
+        rate: { type: number, format: double, description: Units of the symbol one unit of `base` buys., example: 0.9234 }
+        date: { type: string, format: date, description: 'Date the rate is for: the UTC date of an intraday rate, or the date of a daily one.', example: '2026-10-19' }
+        observedAt:
           type: string
           format: date-time
-          example: '2026-03-19T23:59:59.000Z'
-        fluctuation:
-          type: number
-          format: double
-          example: -0.02
+          description: >-
+            When the rate was taken, for an intraday mid-market rate refreshed several times a day.
+            Absent for a daily rate, and for a cross rate one of whose currencies only has a daily rate.
+          example: '2026-10-19T12:00:00Z'
+        previousClose: { type: number, format: double, description: The daily rate on the previous published date., example: 0.9211 }
+        change: { type: number, format: double, description: '`rate - previousClose`.', example: 0.0023 }
+        changePercent: { type: number, format: double, description: '`change` as a percentage of `previousClose`.', example: 0.2497 }
 
-    CurrencyLatestRatesDto:
+    LatestRates:
       type: object
-      required: [alias, code, title, rates]
+      required: [base, updatedAt, rates]
       properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        title:
-          type: string
-          example: United Arab Emirates Dirham
-        rates:
-          type: array
-          items:
-            $ref: '#/components/schemas/CurrencyLatestRateDto'
-
-    SimpleCurrencyRateDto:
-      type: object
-      required: [alias, code, rate]
-      properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        rate:
-          type: number
-          format: double
-          example: 0.0089
-
-    CurrencyRateByDateDto:
-      type: object
-      required: [alias, code, title, date, rates]
-      properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        title:
-          type: string
-          example: United Arab Emirates Dirham
-        date:
-          type: string
-          format: date
-          example: '2021-10-04'
-        rates:
-          type: array
-          items:
-            $ref: '#/components/schemas/SimpleCurrencyRateDto'
-
-    CurrencyHistoricalRateDto:
-      type: object
-      required: [date, rates]
-      properties:
-        date:
-          type: string
-          format: date
-          example: '2021-10-04'
-        rates:
-          type: array
-          items:
-            $ref: '#/components/schemas/SimpleCurrencyRateDto'
-
-    CurrencyHistoricalRatesDto:
-      type: object
-      required: [alias, code, title, start, end, historical]
-      properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        title:
-          type: string
-          example: United Arab Emirates Dirham
-        start:
-          type: string
-          format: date
-          example: '2021-10-04'
-        end:
-          type: string
-          format: date
-          example: '2021-10-04'
-        historical:
-          type: array
-          items:
-            $ref: '#/components/schemas/CurrencyHistoricalRateDto'
-
-    CurrencyMonthlyRateDto:
-      type: object
-      required: [alias, code, rate]
-      properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        rate:
-          type: number
-          format: double
-          example: 0.0089
-        min:
-          type: number
-          format: double
-          example: 10.02
-        max:
-          type: number
-          format: double
-          example: 12.02
-
-    CurrencyMonthRateDto:
-      type: object
-      required: [month, rates]
-      properties:
-        month:
-          type: string
-          pattern: '^\d{4}-\d{2}$'
-          example: '2021-10'
-        rates:
-          type: array
-          items:
-            $ref: '#/components/schemas/CurrencyMonthlyRateDto'
-
-    CurrencyMonthlyRatesDto:
-      type: object
-      required: [alias, code, title, start, end, monthly]
-      properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        title:
-          type: string
-          example: United Arab Emirates Dirham
-        start:
-          type: string
-          pattern: '^\d{4}-\d{2}$'
-          example: '2021-10'
-        end:
-          type: string
-          pattern: '^\d{4}-\d{2}$'
-          example: '2021-10'
-        monthly:
-          type: array
-          items:
-            $ref: '#/components/schemas/CurrencyMonthRateDto'
-
-    RatesDto:
-      type: object
-      required: [rates]
-      properties:
+        base: { $ref: '#/components/schemas/CurrencyIdValue' }
+        updatedAt: { type: string, format: date-time, description: When these rates were last updated., example: '2026-10-19T16:05:00Z' }
         rates:
           type: object
-          description: Exchange rates by currency alias
+          description: Rate per symbol id.
+          additionalProperties: { $ref: '#/components/schemas/LatestRate' }
+          example:
+            EUR: { rate: 0.9234, date: '2026-10-19', observedAt: '2026-10-19T12:00:00Z', previousClose: 0.9211, change: 0.0023, changePercent: 0.2497 }
+
+    HistoricalRates:
+      type: object
+      required: [base, date, rates]
+      properties:
+        base: { $ref: '#/components/schemas/CurrencyIdValue' }
+        date: { type: string, format: date, description: Date the rates are for; earlier than requested when `fallback=previous` was used., example: '2026-10-16' }
+        requestedDate: { type: string, format: date, description: 'The date asked for, when it differs from `date`.' }
+        rates:
+          type: object
+          description: Rate per symbol id.
+          additionalProperties: { type: number, format: double }
+          example: { EUR: 0.9234, GBP: 0.7712 }
+
+    TimeseriesPoint:
+      type: object
+      required: [date, rate]
+      properties:
+        date: { type: string, format: date, description: 'The day, or the first day of the week or month.', example: '2026-10-01' }
+        rate: { type: number, format: double, description: "The day's rate, or the period's closing rate.", example: 0.9234 }
+        open: { type: number, format: double, description: The period's first rate; `week` and `month` only. }
+        average: { type: number, format: double, description: Mean of the period's daily rates; `week` and `month` only. }
+        min: { type: number, format: double, description: Lowest daily rate in the period; `week` and `month` only. }
+        max: { type: number, format: double, description: Highest daily rate in the period; `week` and `month` only. }
+
+    RateTimeseries:
+      type: object
+      required: [base, from, to, interval, series]
+      properties:
+        base: { $ref: '#/components/schemas/CurrencyIdValue' }
+        from: { type: string, format: date, example: '2025-10-16' }
+        to: { type: string, format: date, example: '2026-10-16' }
+        interval:
+          type: string
+          enum: [day, week, month]
+        series:
+          type: object
+          description: Points per symbol id, oldest first. Days without rates are absent, not zero.
           additionalProperties:
             type: array
-            items:
-              $ref: '#/components/schemas/CurrencyLatestRateDto'
+            items: { $ref: '#/components/schemas/TimeseriesPoint' }
 
-    SourceTypeDto:
-      type: string
-      enum:
-        - central_bank
-        - bank
-        - market
-        - crypto_market
-        - free_source
-        - api
-        - unknown
-        - secret
-
-    SourceDto:
+    PairChange:
       type: object
-      required: [alias, title, type, api]
+      required: [since, rate, change, changePercent]
       properties:
-        alias:
-          type: string
-          example: central-bank-europe
-        title:
-          type: string
-          example: Central bank of Europe
-        type:
-          $ref: '#/components/schemas/SourceTypeDto'
-        api:
-          type: boolean
-          example: true
+        since: { type: string, format: date, description: The published date compared with., example: '2026-09-16' }
+        rate: { type: number, format: double, description: The rate on that date. }
+        change: { type: number, format: double }
+        changePercent: { type: number, format: double }
 
-    SimpleCurrencyDto:
+    Pair:
       type: object
-      required: [alias, code, title]
+      required: [base, quote, rate, date, changes]
       properties:
-        alias:
-          type: string
-          example: aed
-        code:
-          type: string
-          nullable: true
-          example: AED
-        title:
-          type: string
-          example: United Arab Emirates Dirham
+        base: { $ref: '#/components/schemas/CurrencyRef' }
+        quote: { $ref: '#/components/schemas/CurrencyRef' }
+        rate: { type: number, format: double, description: Units of `quote` one unit of `base` buys., example: 1.0832 }
+        inverseRate: { type: number, format: double, description: Units of `base` one unit of `quote` buys., example: 0.9232 }
+        date: { type: string, format: date, example: '2026-10-16' }
+        changes:
+          type: object
+          description: Change since a day, a week, a month and a year before `date`; absent where no earlier rate exists.
+          properties:
+            day: { $ref: '#/components/schemas/PairChange' }
+            week: { $ref: '#/components/schemas/PairChange' }
+            month: { $ref: '#/components/schemas/PairChange' }
+            year: { $ref: '#/components/schemas/PairChange' }
+        yearLow: { type: number, format: double, description: Lowest daily rate over the last year. }
+        yearHigh: { type: number, format: double, description: Highest daily rate over the last year. }
 
-    ConvertResultDto:
+    ConversionResult:
       type: object
-      required: [from, to, amount, result, rate, reverseRate]
+      required: [to, rate, amount]
       properties:
-        from:
-          $ref: '#/components/schemas/SimpleCurrencyDto'
-        to:
-          $ref: '#/components/schemas/SimpleCurrencyDto'
-        amount:
-          type: number
-          format: double
-        result:
-          type: number
-          format: double
-        rate:
-          type: number
-          format: double
-        reverseRate:
-          type: number
-          format: double
+        to: { $ref: '#/components/schemas/CurrencyIdValue' }
+        rate: { type: number, format: double, description: Units of `to` per unit of `from`., example: 0.9234 }
+        amount: { type: number, format: double, description: The converted amount., example: 92.34 }
 
-    CurrencyListResponse:
+    Conversion:
       type: object
-      required: [meta, data]
+      required: [from, amount, date, results]
       properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        meta:
-          $ref: '#/components/schemas/ListMetaDto'
-        data:
+        from: { $ref: '#/components/schemas/CurrencyIdValue' }
+        amount: { type: number, format: double, example: 100 }
+        date: { type: string, format: date, description: Date of the rates used., example: '2026-10-16' }
+        results:
           type: array
-          items:
-            $ref: '#/components/schemas/CurrencyDto'
+          items: { $ref: '#/components/schemas/ConversionResult' }
 
-    SourceListResponse:
+    Allowance:
       type: object
-      required: [meta, data]
+      description: The caller's request allowance.
+      required: [tier, limit, remaining, windowSeconds]
       properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        meta:
-          $ref: '#/components/schemas/ListMetaDto'
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/SourceDto'
+        tier:
+          type: string
+          enum: [anonymous, key]
+          description: Whether the allowance belongs to an API key or to the caller's address.
+        limit: { type: integer, format: int32, description: Units the allowance holds when full., example: 120 }
+        remaining: { type: integer, format: int32, description: Units left now., example: 117 }
+        windowSeconds: { type: integer, format: int32, description: Seconds the allowance takes to refill completely., example: 60 }
 
-    CurrencyDetailedResponse:
+    Meta:
       type: object
-      required: [data]
+      required: [defaultBase, limits, allowance]
       properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        data:
-          $ref: '#/components/schemas/CurrencyDetailedDto'
-
-    CurrencyLatestRatesResponse:
-      type: object
-      required: [data]
-      properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        data:
-          $ref: '#/components/schemas/CurrencyLatestRatesDto'
-
-    CurrencyRateByDateResponse:
-      type: object
-      required: [data]
-      properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        data:
-          $ref: '#/components/schemas/CurrencyRateByDateDto'
-
-    CurrencyHistoricalRatesResponse:
-      type: object
-      required: [data]
-      properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        data:
-          $ref: '#/components/schemas/CurrencyHistoricalRatesDto'
-
-    CurrencyMonthlyRatesResponse:
-      type: object
-      required: [data]
-      properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        data:
-          $ref: '#/components/schemas/CurrencyMonthlyRatesDto'
-
-    RatesResponse:
-      type: object
-      required: [data]
-      properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        data:
-          $ref: '#/components/schemas/RatesDto'
-
-    SourceResponse:
-      type: object
-      required: [data]
-      properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        data:
-          $ref: '#/components/schemas/SourceDto'
-
-    ConvertResultResponse:
-      type: object
-      required: [data]
-      properties:
-        copyright:
-          $ref: '#/components/schemas/CopyrightDto'
-        data:
-          $ref: '#/components/schemas/ConvertResultDto'
+        latestRatesUpdatedAt: { type: string, format: date-time, description: When latest rates last changed; absent before any rates exist. }
+        latestObservedAt: { type: string, format: date-time, description: When the intraday rates served as the latest were taken; absent while the latest rates are daily ones. }
+        lastDailyDate: { type: string, format: date, description: The most recent date with published daily rates; absent before any rates exist. }
+        defaultBase: { $ref: '#/components/schemas/CurrencyIdValue' }
+        limits:
+          type: object
+          required: [maxPageSize, maxSymbols, maxTimeseriesSymbols, maxDailyTimeseriesDays, maxWeeklyTimeseriesDays]
+          properties:
+            maxPageSize: { type: integer, format: int32, example: 100 }
+            maxSymbols: { type: integer, format: int32, example: 50 }
+            maxTimeseriesSymbols: { type: integer, format: int32, example: 10 }
+            maxDailyTimeseriesDays: { type: integer, format: int32, example: 1827 }
+            maxWeeklyTimeseriesDays: { type: integer, format: int32, example: 7305 }
+        allowance: { $ref: '#/components/schemas/Allowance' }

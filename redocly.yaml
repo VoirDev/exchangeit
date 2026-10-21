@@ -1,0 +1,15 @@
+extends:
+  - recommended
+
+apis:
+  latest:
+    root: spec/latest.yaml
+  legacy:
+    root: spec/legacy.yaml
+    rules:
+      # Frozen copy of the deprecated v1 / v2 contract; kept byte-identical to what the API implements.
+      security-defined: off
+      nullable-type-sibling: off
+      no-server-trailing-slash: off
+      tag-description: off
+      info-license: off
